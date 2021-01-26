@@ -208,8 +208,6 @@ class JSonUploader
     {
         $curl= curl_init();
         $data = json_encode($events);
-        printf("$this->curl\n");
-        printf("$data\n");
 
         curl_setopt_array($curl, array(
             CURLOPT_PORT => $this->port,
@@ -227,7 +225,6 @@ class JSonUploader
             CURLOPT_SSL_VERIFYPEER => false,
         ));
         $response = curl_exec($curl);
-        printf("response code:$response\n");
         if (false === $response) {
             $curl_error = curl_error($curl);
             $curl_errno = curl_errno($curl);
