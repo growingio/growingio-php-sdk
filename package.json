@@ -1,0 +1,15 @@
+{
+  "name": "growingio/php-sdk",
+  "type": "library",
+  "homepage": "http://www.growingio.com",
+  "description": "PHP SDK for GrowingIO",
+  "keywords": ["sdk", "growingio"],
+  "license": "MIT",
+  "require": {
+    "php": ">=5.5.0"
+  },
+  "autoload": {
+    "files": ["GrowingIO.php"]
+  },
+  "minimum-stability": "stable"
+}
