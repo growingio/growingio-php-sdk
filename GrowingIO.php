@@ -1,13 +1,10 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: tianyi
- * Version: 1.0.3
- */
 
 class GrowingIO {
 
     private $_accountID;
+    private $_host;
+    private $_dataSourceId;
     private $_options;
     private $_consumer;
 
@@ -16,8 +13,9 @@ class GrowingIO {
     function validateAccountID($accountID)
     {
         if($accountID == null) throw new Exception("accountID is null");
-        if(strlen($accountID) <> 16 && strlen($accountID) <> 32)
-            throw new Exception("accountID length error");
+        if(strlen($accountID) <> 16 && strlen($accountID) <> 32) {
+           printf("WARNING: AccountId length error\n");
+        }
     }
 
     private function currentMillisecond() {
@@ -29,14 +27,18 @@ class GrowingIO {
     /**
      * Instantiates a new GrowingIO instance.
      * @param $accountID
+     * @param $host
+     * @param $dataSourceId
      * @param array $options
      */
-    private function __construct($accountID, $options = array())
+    private function __construct($accountID, $host, $dataSourceId, $options = array())
     {
         $this->validateAccountID($accountID);
         $this->_accountID = $accountID;
-        $this->_options = array_merge($options, array("accountId"=>$accountID));
-        if(array_key_exists("debug", $this->_options)) {
+        $this->_host = $host;
+        $this->_dataSourceId = $dataSourceId;
+        $this->_options = array_merge($options, array("accountId"=>$accountID, "host"=>$host, "dataSourceId"=>$dataSourceId));
+        if(isset($options['debug']) && $options['debug'] === true) {
             $this->_consumer = new DebugConsumer($this->_options);
         } else {
             $this->_consumer = new SimpleConsumer($this->_options);
@@ -45,14 +47,16 @@ class GrowingIO {
 
     /**
      * Returns a singleton instance of GrowingIO
-     * @param $accountID
-     * @param array $options
+     * @param $accountID 项目 ID，见数据源配置
+     * @param $host 数据收集服务域名，请参考运维手册或联系技术支持获取
+     * @param $dataSourceId 数据源 ID，见数据源配置
+     * @param array $options 额外参数，目前支持 debug 模式
      * @return GrowingIO
      */
-    public static function getInstance($accountID, $options = array())
+    public static function getInstance($accountID, $host, $dataSourceId, $options = array())
     {
         if(self::$_instance == null) {
-            self::$_instance = new GrowingIO($accountID, $options);
+            self::$_instance = new GrowingIO($accountID, $host, $dataSourceId, $options);
         }
         return self::$_instance;
     }
@@ -67,45 +71,102 @@ class GrowingIO {
     public function track($loginUserId, $eventKey, $properties)
     {
         $event = new CustomEvent();
+        $event->dataSourceId($this->_dataSourceId);
         $event->eventTime($this->currentMillisecond());
         $event->eventKey($eventKey);
         $event->loginUserId($loginUserId);
         $event->eventProperties($properties);
         $this->_consumer->consume($event);
     }
+
+    public function setUserAttributes($logUserId, $properties)
+    {
+        $user = new UserProps();
+        $user->dataSourceId($this->_dataSourceId);
+        $user->eventTime($this->currentMillisecond());
+        $user->loginUserId($logUserId);
+        $user->userProperties($properties);
+        $this->_consumer->consume($user);
+    }
 }
 
 class CustomEvent implements JsonSerializable
 {
-    private $tm;
-    private $n;
-    private $cs1;
-    private $var;
-    private $t;
+    private $timestamp;
+    private $eventName;
+    private $userId;
+    private $attributes;
+    private $eventType;
+    private $dataSourceId;
 
     public function __construct() {
-        $this->tm = time()*1000;
-        $this->t = "cstm";
+        $this->timestamp = time()*1000;
+        $this->eventType = "CUSTOM";
+    }
+
+    public function dataSourceId($dataSourceId) {
+        $this->dataSourceId = $dataSourceId;
     }
 
     public function eventTime($time)
     {
-        $this->tm = $time;
+        $this->timestamp = $time;
     }
 
     public function eventKey($eventKey)
     {
-        $this->n = $eventKey;
+        $this->eventName = $eventKey;
     }
 
     public function loginUserId($loginUserId)
     {
-        $this->cs1 = $loginUserId;
+        $this->userId = $loginUserId;
     }
 
-    public function EventProperties($properties)
+    public function eventProperties($properties)
     {
-        $this->var = $properties;
+        $this->attributes = $properties;
+    }
+
+    public function jsonSerialize() {
+        $data = [];
+        foreach ($this as $key=>$val){
+            if ($val !== null) $data[$key] = $val;
+        }
+        return $data;
+    }
+}
+
+
+class UserProps implements JsonSerializable
+{
+    private $userId;
+    private $attributes;
+    private $eventType;
+    private $dataSourceId;
+
+    public function __construct() {
+        $this->timestamp = time()*1000;
+        $this->eventType = "LOGIN_USER_ATTRIBUTES";
+    }
+
+    public function dataSourceId($dataSourceId) {
+        $this->dataSourceId = $dataSourceId;
+    }
+
+    public function eventTime($time)
+    {
+        $this->timestamp = $time;
+    }
+
+    public function loginUserId($loginUserId)
+    {
+        $this->userId = $loginUserId;
+    }
+
+    public function userProperties($properties)
+    {
+        $this->attributes = $properties;
     }
 
     public function jsonSerialize() {
@@ -120,11 +181,21 @@ class CustomEvent implements JsonSerializable
 class JSonUploader
 {
     private $accountId;
+    private $host;
+    private $port;
+    private $dataSourceId;
     private $curl;
     public function __construct($options)
     {
         $this->accountId = $options["accountId"];
-
+        $this->host = $options["host"];
+        $this->dataSourceId = $options["dataSourceId"];
+        if (substr( $this->host, 0, 5 ) === "https") {
+            $this->port = 443;
+        } else {
+            $this->port = 80;
+        }
+        $this->curl = "{$this->host}/v3/projects/$this->accountId/collect";
     }
 
     protected function currentMillisecond() {
@@ -137,11 +208,12 @@ class JSonUploader
     {
         $curl= curl_init();
         $data = json_encode($events);
-//        printf("request url: https://api.growingio.com/v3/{$this->accountId}/s2s/cstm\n");
+        printf("$this->curl\n");
+        printf("$data\n");
 
         curl_setopt_array($curl, array(
-            CURLOPT_PORT => "443",
-            CURLOPT_URL => "https://api.growingio.com/v3/{$this->accountId}/s2s/cstm?stm=".$this->currentMillisecond(),
+            CURLOPT_PORT => $this->port,
+            CURLOPT_URL => "$this->curl?stm=".$this->currentMillisecond(),
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => "",
             CURLOPT_MAXREDIRS => 10,
@@ -155,6 +227,7 @@ class JSonUploader
             CURLOPT_SSL_VERIFYPEER => false,
         ));
         $response = curl_exec($curl);
+        printf("response code:$response\n");
         if (false === $response) {
             $curl_error = curl_error($curl);
             $curl_errno = curl_errno($curl);
