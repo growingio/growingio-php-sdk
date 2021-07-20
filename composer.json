@@ -8,6 +8,10 @@
   "require": {
     "php": ">=5.5.0"
   },
+  "require-dev": {
+    "squizlabs/php_codesniffer": "3.*",
+    "phpunit/phpunit": "5.3.*"
+  },
   "autoload": {
     "files": ["GrowingIO.php"]
   },
