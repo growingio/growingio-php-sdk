@@ -2,7 +2,7 @@
 
 use com\growingio\GrowingIO;
 
-include_once 'GrowingIO.php';
+require '../vendor/autoload.php';
 
 // 请在您调试前，将accountID修改为您的项目AccountID
 // 所有自定义事件需要提前在GrowingIO产品中进行定义

@@ -3,11 +3,22 @@
 GrowingIO提供在Server端部署的PHP SDK,从而可以方便的进行事件上报等操作
 
 ### 集成 & 安装
+php sdk已经发布在[Packagist](https://packagist.org/packages/phpmailer/phpmailer), 可以通过[Composer](https://getcomposer.org)进行安装
+```composer
+"growingio/php-sdk": "1.0.0-op"
+```
+```php
+<?php
+use com\growingio\GrowingIO;
+//Load Composer's autoloader
+require 'vendor/autoload.php';
+```
+如果没有使用Composer, 可以直接下载源代码到php配置中指定的include_path目录中, 并手动加载类文件
 ```php
 <?php
 use com\growingio\GrowingIO;
 
-include_once 'GrowingIO.php';
+include_once 'path/src/GrowingIO.php'; // path为对应路径
 ```
 
 ### 初始化配置
@@ -92,7 +103,7 @@ $gio->setItemAttributes(
 <?php
 use com\growingio\GrowingIO;
 
-include_once 'GrowingIO.php';
+include_once 'path/src/GrowingIO.php'; // path为对应路径
 
 // 请在您调试前,将accountID修改为您的项目AccountID
 // 所有自定义事件需要提前在GrowingIO产品中进行定义
