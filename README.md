@@ -5,7 +5,7 @@ GrowingIO提供在Server端部署的PHP SDK,从而可以方便的进行事件上
 ### 集成 & 安装
 php sdk已经发布在[Packagist](https://packagist.org/packages/phpmailer/phpmailer), 可以通过[Composer](https://getcomposer.org)进行安装
 ```composer
-"growingio/php-sdk": "1.0.0-op"
+"growingio/php-sdk": "dev-op"
 ```
 ```php
 <?php
