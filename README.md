@@ -115,8 +115,6 @@ $gio = GrowingIO::getInstance($accountID, $host, $dataSourceId, $props);
 
 // 采集自定义事件
 $gio->trackCustomEvent($gio->getCustomEventFactory('loginUserId', 'eventName')
-    ->setKey('itemKey')
-    ->setId('itemId')
     ->setLoginUserKey('loginUserKey')
     ->setProperties(array('attrKey1' => 'attrValue1', 'attrKey2' => 'attrValue2'))
     ->create()
