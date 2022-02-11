@@ -53,10 +53,13 @@ class GrowingIO
 
     /**
      * Instantiates a new GrowingIO instance.
-     * @param $accountID 项目 ID，见数据源配置
-     * @param $host 数据收集服务域名，请参考运维手册或联系技术支持获取
-     * @param $dataSourceId 数据源 ID，见数据源配置
-     * @param array $options 额外参数，目前支持 debug 模式，此模式仅打印日志，不发送数据
+     *
+     * @param  $accountID    项目
+     *                       ID，见数据源配置
+     * @param  $host         数据收集服务域名，请参考运维手册或联系技术支持获取
+     * @param  $dataSourceId 数据源 ID，见数据源配置
+     * @param  array $options      额外参数，目前支持 debug
+     *                             模式，此模式仅打印日志，不发送数据
      * @throws Exception 初始化参数不合法
      */
     private function __construct($accountID, $host, $dataSourceId, $options = array())
@@ -78,10 +81,13 @@ class GrowingIO
 
     /**
      * Returns a singleton instance of GrowingIO
-     * @param $accountID 项目 ID，见数据源配置
-     * @param $host 数据收集服务域名，请参考运维手册或联系技术支持获取
-     * @param $dataSourceId 数据源 ID，见数据源配置
-     * @param array $options 额外参数，目前支持 debug 模式
+     *
+     * @param  $accountID    项目
+     *                       ID，见数据源配置
+     * @param  $host         数据收集服务域名，请参考运维手册或联系技术支持获取
+     * @param  $dataSourceId 数据源 ID，见数据源配置
+     * @param  array $options      额外参数，目前支持
+     *                             debug 模式
      * @return GrowingIO
      * @throws Exception 初始化参数不合法
      */
@@ -95,11 +101,12 @@ class GrowingIO
 
     /**
      * track a custom event
-     * @param $loginUserId loginUser's ID
-     * @param $eventKey the key of customEvent, registered in GrowingIO
-     * @param array $properties the properties of this event, registered in GrowingIO
-     * @param $id 物品模型id
-     * @param $key 物品模型key
+     *
+     * @param  $loginUserId  loginUser's ID
+     * @param  $eventKey     the key of customEvent, registered in GrowingIO
+     * @param  array $properties   the properties of this event, registered in GrowingIO
+     * @param  $id           物品模型id
+     * @param  $key          物品模型key
      * @return void
      */
     public function track($loginUserId, $eventKey, $properties = array(), $id = null, $key = null)
@@ -121,6 +128,18 @@ class GrowingIO
         $this->consumer->consume($event);
     }
 
+    public function getCustomEventFactory($loginUserId, $eventKey) {
+        return new CustomEventFactory($this->dataSourceId, $loginUserId, $eventKey,
+            ($this->isIdMappingEnabled()));
+    }
+
+    public function trackCustomEvent(CustomEvent $customEvent)
+    {
+        if (!is_null($customEvent)) {
+            $this->consumer->consume($customEvent);
+        }
+    }
+
     public function setUserAttributes($logUserId, $properties)
     {
         $user = new UserProps();
@@ -129,6 +148,21 @@ class GrowingIO
         $user->loginUserId($logUserId);
         $user->userProperties($properties);
         $this->consumer->consume($user);
+    }
+
+    public function getUserAttributesFactory($loginUserId) {
+        return new UserAttributesFactory($this->dataSourceId, $loginUserId,
+            ($this->isIdMappingEnabled()));
+    }
+
+    public function setUserAttributesEvent(UserProps $userAttributesEvent) {
+        if (!is_null($userAttributesEvent)) {
+            $this->consumer->consume($userAttributesEvent);
+        }
+    }
+
+    public function isIdMappingEnabled() {
+        return (isset($this->options['idMappingEnabled']) && $this->options['idMappingEnabled'] === true);
     }
 
     public function setItemAttributes($itemId, $itemKey, $properties = array())
@@ -146,10 +180,85 @@ class GrowingIO
 }
 
 // @codingStandardsIgnoreLine
+class CustomEventFactory
+{
+    private $dataSourceId;
+    private $eventKey;
+    private $loginUserKey;
+    private $loginUserId;
+    private $properties;
+    private $id;
+    private $key;
+    private $idMappingEnabled;
+
+    public function __construct($dataSourceId, $loginUserId, $eventKey, $idMappingEnabled) {
+        $this->dataSourceId = $dataSourceId;
+        $this->loginUserId = $loginUserId;
+        $this->eventKey = $eventKey;
+        $this->idMappingEnabled = $idMappingEnabled;
+    }
+
+    public function setEventKey($eventKey) {
+        $this->eventKey = $eventKey;
+    }
+
+    public function setLoginUserKey($loginUserKey) {
+        $this->loginUserKey = $loginUserKey;
+        return $this;
+    }
+
+    public function setLoginUserId($loginUserId) {
+        $this->loginUserId = $loginUserId;
+        return $this;
+    }
+
+    public function setProperties($properties) {
+        $this->properties = $properties;
+        return $this;
+    }
+
+    public function setId($id) {
+        $this->id = $id;
+        return $this;
+    }
+
+    public function setKey($key) {
+        $this->key = $key;
+        return $this;
+    }
+
+    public function create() {
+        $customEvent = new CustomEvent();
+
+        if (!empty($this->loginUserId) && !empty($this->eventKey) && !empty($this->dataSourceId)) {
+            $customEvent->loginUserId($this->loginUserId);
+            $customEvent->eventKey($this->eventKey);
+            $customEvent->dataSourceId($this->dataSourceId);
+        } else {
+            return null;
+        }
+
+        if (!empty($this->loginUserKey) && $this->idMappingEnabled) {
+            $customEvent->loginUserKey($this->loginUserKey);
+        }
+
+        if (!empty($this->properties)) {
+            $customEvent->eventProperties($this->properties);
+        }
+
+        if (!empty($this->id) && !empty($this->key)) {
+            $customEvent->resourceItem(array('id' => $this->id, 'key' => $this->key));
+        }
+        return $customEvent;
+    }
+}
+
+// @codingStandardsIgnoreLine
 class CustomEvent implements \JsonSerializable
 {
     private $timestamp;
     private $eventName;
+    private $userKey;
     private $userId;
     private $attributes;
     private $eventType;
@@ -177,6 +286,11 @@ class CustomEvent implements \JsonSerializable
         $this->eventName = $eventKey;
     }
 
+    public function loginUserKey($loginUserKey)
+    {
+        $this->userKey = $loginUserKey;
+    }
+
     public function loginUserId($loginUserId)
     {
         $this->userId = $loginUserId;
@@ -195,10 +309,63 @@ class CustomEvent implements \JsonSerializable
     use JsonSerializableTrait;
 }
 
+// @codingStandardsIgnoreLine
+class UserAttributesFactory
+{
+    private $dataSourceId;
+    private $properties;
+    private $loginUserKey;
+    private $loginUserId;
+    private $idMappingEnabled;
+
+    public function __construct($dataSourceId, $loginUserId, $idMappingEnabled)
+    {
+        $this->dataSourceId = $dataSourceId;
+        $this->idMappingEnabled = $idMappingEnabled;
+        $this->loginUserId = $loginUserId;
+    }
+
+    public function setLoginUserKey($loginUserKey) {
+        $this->loginUserKey = $loginUserKey;
+        return $this;
+    }
+
+    public function setLoginUserId($loginUserId) {
+        $this->loginUserId = $loginUserId;
+        return $this;
+    }
+
+    public function setProperties($properties) {
+        $this->properties = $properties;
+        return $this;
+    }
+
+    public function create()
+    {
+        $userProps = new UserProps();
+        if (!empty($this->dataSourceId) && !empty($this->loginUserId)) {
+            $userProps->dataSourceId($this->dataSourceId);
+            $userProps->loginUserId($this->loginUserId);
+        } else {
+            return null;
+        }
+
+        if (!empty($this->loginUserKey) && $this->idMappingEnabled) {
+            $userProps->loginUserKey($this->loginUserKey);
+        }
+
+        if (!empty($this->properties)) {
+            $userProps->userProperties($this->properties);
+        }
+
+        return $userProps;
+    }
+}
 
 // @codingStandardsIgnoreLine
 class UserProps implements \JsonSerializable
 {
+    private $userKey;
     private $userId;
     private $attributes;
     private $eventType;
@@ -219,6 +386,11 @@ class UserProps implements \JsonSerializable
     public function eventTime($time)
     {
         $this->timestamp = $time;
+    }
+
+    public function loginUserKey($loginUserKey)
+    {
+        $this->userKey = $loginUserKey;
     }
 
     public function loginUserId($loginUserId)
@@ -306,7 +478,8 @@ class JSonUploader
         $data = json_encode($events);
 
         $host = isset($this->channels[$ch]) ? $this->channels[$ch] : $this->channels['default'];
-        curl_setopt_array($curl, array(
+        curl_setopt_array(
+            $curl, array(
             CURLOPT_PORT => $this->port,
             CURLOPT_URL => ("$host?stm=" . $this->currentMillisecond()),
             CURLOPT_RETURNTRANSFER => true,
@@ -320,7 +493,8 @@ class JSonUploader
                 'content-type: application/json'
             ),
             CURLOPT_SSL_VERIFYPEER => false,
-        ));
+            )
+        );
         $response = curl_exec($curl);
         if (false === $response) {
             $curl_error = curl_error($curl);

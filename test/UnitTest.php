@@ -3,17 +3,27 @@
 namespace com\growingio\test;
 
 use com\growingio\GrowingIO;
+use PHPUnit\Framework\TestCase;
+use DMS\PHPUnitExtensions\ArraySubset\ArraySubsetAsserts;
 
-class UnitTest extends \PHPUnit_Framework_TestCase
+/**
+ * 执行测试文件要求本地php版本 >= 7.1
+ *
+ * Class UnitTest
+ * @package com\growingio\test
+ */
+class UnitTest extends TestCase
 {
+    use ArraySubsetAsserts;
+
     private static $gio;
 
-    public static function setUpBeforeClass()
+    public static function setUpBeforeClass(): void
     {
         $accountID = '1234567887654321'; // 项目 ID，见数据源配置
         $host = 'https://localhost.com'; // 数据收集服务域名，请参考运维手册或联系技术支持获取
         $dataSourceId = '12345678'; // 数据源 ID，见数据源配置
-        $props = array('debug' => true); // debug 模式，此模式仅打印日志，不发送数据
+        $props = array('debug' => true, 'idMappingEnabled' => true); // debug 模式，此模式仅打印日志，不发送数据
 
         self::$gio = GrowingIO::getInstance($accountID, $host, $dataSourceId, $props);
     }
@@ -31,6 +41,24 @@ class UnitTest extends \PHPUnit_Framework_TestCase
             );
         });
         self::$gio->track('userId', 'eventKey');
+    }
+
+    public function testTrackCustomEvent()
+    {
+        $this->setOutputCallback(function ($msg) {
+            $data = json_decode($msg, true);
+            $this->assertArraySubset(
+                ['eventName' => 'eventKey',
+                    'userKey' => 'userKey',
+                    'userId' => 'userId',
+                    'eventType' => 'CUSTOM',
+                    'dataSourceId' => '12345678'],
+                $data
+            );
+        });
+        self::$gio->trackCustomEvent(self::$gio->getCustomEventFactory('userId', "eventKey")
+                                                ->setLoginUserKey('userKey')
+                                                ->create());
     }
 
     public function testTrackProperties()
@@ -85,6 +113,24 @@ class UnitTest extends \PHPUnit_Framework_TestCase
             );
         });
         self::$gio->setUserAttributes('userId', array('userKey1' => 'v1', 'userKey2' => 'v2'));
+    }
+
+    public function testSetUserAttributesEvent()
+    {
+        $this->setOutputCallback(function ($msg) {
+            $data = json_decode($msg, true);
+            $this->assertArraySubset(
+                ['userId' => 'userId',
+                    'eventType' => 'LOGIN_USER_ATTRIBUTES',
+                    'dataSourceId' => '12345678',
+                    'attributes' => array('userKey1' => 'v1', 'userKey2' => 'v2')],
+                $data
+            );
+        });
+        self::$gio->setUserAttributesEvent(self::$gio->getUserAttributesFactory('userId')
+                                                    ->setLoginUserKey('userKey')
+                                                    ->setProperties(array('userKey1' => 'v1', 'userKey2' => 'v2'))
+                                                    ->create());
     }
 
     public function testSetItemAttributes()
