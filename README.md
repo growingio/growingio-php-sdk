@@ -5,7 +5,7 @@ GrowingIO提供在Server端部署的PHP SDK,从而可以方便的进行事件上
 ### 集成 & 安装
 php sdk已经发布在[Packagist](https://packagist.org/packages/phpmailer/phpmailer), 可以通过[Composer](https://getcomposer.org)进行安装
 ```composer
-"growingio/php-sdk": "dev-op"
+"growingio/php-sdk": "1.0.1"
 ```
 ```php
 <?php
@@ -33,6 +33,7 @@ include_once 'path/src/GrowingIO.php'; // path为对应路径
 |参数|必选|类型|默认值|说明|
 |:----|:----|:----|:----|-----|
 |debug|false|boolean|false|debug 模式, 此模式仅打印日志, 不发送数据|
+|idMappingEnabled|false|boolean|false|是否支持设置用户类型, false, 不发送userKey. true, 发送userKey|
 ###### 示例
 ```php
 $accountID = '1234567887654321';
@@ -50,6 +51,7 @@ $gio = GrowingIO::getInstance($accountID, $host, $dataSourceId, $props);
 ###### 请求参数
 |参数|必选|类型|默认值|说明|
 |:----|:----|:----|:----|-----|
+|loginUserKey|false|string| |登录用户类型|
 |loginUserId|true|string| |登录用户id|
 |eventKey|true|string| |事件名, 事件标识符|
 |properties|false|array|array()|事件发生时,所伴随的维度信息|
@@ -57,12 +59,12 @@ $gio = GrowingIO::getInstance($accountID, $host, $dataSourceId, $props);
 |key|false|string|null|事件发生时关联的物品模型key|
 ###### 示例
 ```php
-$gio->track(
-    'loginUserId',
-    'eventName',
-    array('attrKey' => 'attrValue'),
-    'itemId',
-    'itemKey'
+$gio->trackCustomEvent($gio->getCustomEventFactory('loginUserId', 'eventName')
+    ->setKey('itemKey')
+    ->setId('itemId')
+    ->setLoginUserKey('loginUserKey')
+    ->setProperties(array('attrKey1' => 'attrValue1', 'attrKey2' => 'attrValue2'))
+    ->create()
 );
 ```
 **2\. 设置登录用户变量**
@@ -71,14 +73,15 @@ $gio->track(
 ###### 请求参数
 |参数|必选|类型|默认值|说明|
 |:----|:----|:----|:----|-----|
+|loginUserKey|false|string| |登录用户类型|
 |loginUserId|true|string| |登录用户id|
 |properties|true|array| |用户属性信息|
 ###### 示例
 ```php
-$gio->setUserAttributes(
-    'loginUserId', 
-    array('gender' => 'male')
-);
+$gio->setUserAttributesEvent($gio->getUserAttributesFactory('loginUserId')
+    ->setLoginUserKey('loginUserKey')
+    ->setProperties(array('gender' => 'male', 'age' => '18'))
+    ->create());
 ```
 **3\. 设置物品模型**
 ###### 接口功能
@@ -115,19 +118,19 @@ $props = array('debug' => true);
 $gio = GrowingIO::getInstance($accountID, $host, $dataSourceId, $props);
 
 // 采集自定义事件
-$gio->track(
-    'loginUserId',
-    'eventName',
-    array('attrKey' => 'attrValue'),
-    'itemId',
-    'itemKey'
+$gio->trackCustomEvent($gio->getCustomEventFactory('loginUserId', 'eventName')
+    ->setKey('itemKey')
+    ->setId('itemId')
+    ->setLoginUserKey('loginUserKey')
+    ->setProperties(array('attrKey1' => 'attrValue1', 'attrKey2' => 'attrValue2'))
+    ->create()
 );
 
 // 设置登录用户变量
-$gio->setUserAttributes(
-    'loginUserId', 
-    array('gender' => 'male')
-);
+$gio->setUserAttributesEvent($gio->getUserAttributesFactory('loginUserId')
+    ->setLoginUserKey('loginUserKey')
+    ->setProperties(array('gender' => 'male', 'age' => '18'))
+    ->create());
 
 // 设置物品模型
 $gio->setItemAttributes(
