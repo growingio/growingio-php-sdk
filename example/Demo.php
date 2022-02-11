@@ -24,23 +24,19 @@ function currentMillisecond()
 
 $start = currentMillisecond();
 printf($start . PHP_EOL);
-$gio->track('phpUserId', 'phpEvent');
 $gio->setUserAttributes('phpUserId', array('userKey1' => 'v1', 'userKey2' => 'v2'));
 $gio->setUserAttributesEvent($gio->getUserAttributesFactory('pUserId')
     ->setLoginUserKey('pUserKey')
     ->setProperties(array('userKey1' => 'v1', 'userKey2' => 'v2'))
     ->create());
 $gio->setUserAttributesEvent($gio->getUserAttributesFactory('pUserId')->create());
+$gio->track('phpUserId', 'phpEvent');
 $gio->track(
     'phpUserId',
     'phpEvent',
-    array('userKey1' => 'v1', 'userKey2' => 'v2'),
-    '1',
-    'phpKey'
+    array('userKey1' => 'v1', 'userKey2' => 'v2')
 );
 $gio->trackCustomEvent($gio->getCustomEventFactory('loginUserId', 'pEvent')
-    ->setKey('itemKey')
-    ->setId('itemId')
     ->setLoginUserKey('loginUserKey')
     ->setProperties(array('userKey1' => 'v1', 'userKey2' => 'v2'))
     ->create()
