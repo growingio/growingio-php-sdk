@@ -102,11 +102,11 @@ class GrowingIO
     /**
      * track a custom event
      *
-     * @param  $loginUserId  loginUser's ID
-     * @param  $eventKey     the key of customEvent, registered in GrowingIO
-     * @param  array $properties   the properties of this event, registered in GrowingIO
-     * @param  $id           物品模型id
-     * @param  $key          物品模型key
+     * @param  $loginUserId loginUser's ID
+     * @param  $eventKey    the key of customEvent, registered in GrowingIO
+     * @param  array $properties  the properties of this event, registered in GrowingIO
+     * @param  $id          物品模型id
+     * @param  $key         物品模型key
      * @return void
      */
     public function track($loginUserId, $eventKey, $properties = array(), $id = null, $key = null)
@@ -128,9 +128,12 @@ class GrowingIO
         $this->consumer->consume($event);
     }
 
-    public function getCustomEventFactory($loginUserId, $eventKey) {
-        return new CustomEventFactory($this->dataSourceId, $loginUserId, $eventKey,
-            ($this->isIdMappingEnabled()));
+    public function getCustomEventFactory($loginUserId, $eventKey)
+    {
+        return new CustomEventFactory(
+            $this->dataSourceId, $loginUserId, $eventKey,
+            ($this->isIdMappingEnabled())
+        );
     }
 
     public function trackCustomEvent(CustomEvent $customEvent)
@@ -150,18 +153,23 @@ class GrowingIO
         $this->consumer->consume($user);
     }
 
-    public function getUserAttributesFactory($loginUserId) {
-        return new UserAttributesFactory($this->dataSourceId, $loginUserId,
-            ($this->isIdMappingEnabled()));
+    public function getUserAttributesFactory($loginUserId)
+    {
+        return new UserAttributesFactory(
+            $this->dataSourceId, $loginUserId,
+            ($this->isIdMappingEnabled())
+        );
     }
 
-    public function setUserAttributesEvent(UserProps $userAttributesEvent) {
+    public function setUserAttributesEvent(UserProps $userAttributesEvent)
+    {
         if (!is_null($userAttributesEvent)) {
             $this->consumer->consume($userAttributesEvent);
         }
     }
 
-    public function isIdMappingEnabled() {
+    public function isIdMappingEnabled()
+    {
         return (isset($this->options['idMappingEnabled']) && $this->options['idMappingEnabled'] === true);
     }
 
@@ -190,44 +198,59 @@ class CustomEventFactory
     private $id;
     private $key;
     private $idMappingEnabled;
+    private $eventTime;
 
-    public function __construct($dataSourceId, $loginUserId, $eventKey, $idMappingEnabled) {
+    public function __construct($dataSourceId, $loginUserId, $eventKey, $idMappingEnabled)
+    {
         $this->dataSourceId = $dataSourceId;
         $this->loginUserId = $loginUserId;
         $this->eventKey = $eventKey;
         $this->idMappingEnabled = $idMappingEnabled;
     }
 
-    public function setEventKey($eventKey) {
+    public function setEventKey($eventKey)
+    {
         $this->eventKey = $eventKey;
     }
 
-    public function setLoginUserKey($loginUserKey) {
+    public function setLoginUserKey($loginUserKey)
+    {
         $this->loginUserKey = $loginUserKey;
         return $this;
     }
 
-    public function setLoginUserId($loginUserId) {
+    public function setLoginUserId($loginUserId)
+    {
         $this->loginUserId = $loginUserId;
         return $this;
     }
 
-    public function setProperties($properties) {
+    public function setProperties($properties)
+    {
         $this->properties = $properties;
         return $this;
     }
 
-    public function setId($id) {
+    public function setId($id)
+    {
         $this->id = $id;
         return $this;
     }
 
-    public function setKey($key) {
+    public function setKey($key)
+    {
         $this->key = $key;
         return $this;
     }
 
-    public function create() {
+    public function setEventTime($eventTime)
+    {
+        $this->eventTime = $eventTime;
+        return $this;
+    }
+
+    public function create()
+    {
         $customEvent = new CustomEvent();
 
         if (!empty($this->loginUserId) && !empty($this->eventKey) && !empty($this->dataSourceId)) {
@@ -249,6 +272,10 @@ class CustomEventFactory
         if (!empty($this->id) && !empty($this->key)) {
             $customEvent->resourceItem(array('id' => $this->id, 'key' => $this->key));
         }
+
+        if (!empty($this->eventTime)) {
+            $customEvent->eventTime($this->eventTime);
+        }
         return $customEvent;
     }
 }
@@ -264,6 +291,7 @@ class CustomEvent implements \JsonSerializable
     private $eventType;
     private $dataSourceId;
     private $resourceItem;
+    private $sendTime;
 
     public function __construct()
     {
@@ -279,6 +307,7 @@ class CustomEvent implements \JsonSerializable
     public function eventTime($time)
     {
         $this->timestamp = $time;
+        $this->sendTime = $time;
     }
 
     public function eventKey($eventKey)
@@ -317,6 +346,7 @@ class UserAttributesFactory
     private $loginUserKey;
     private $loginUserId;
     private $idMappingEnabled;
+    private $eventTime;
 
     public function __construct($dataSourceId, $loginUserId, $idMappingEnabled)
     {
@@ -325,18 +355,27 @@ class UserAttributesFactory
         $this->loginUserId = $loginUserId;
     }
 
-    public function setLoginUserKey($loginUserKey) {
+    public function setLoginUserKey($loginUserKey)
+    {
         $this->loginUserKey = $loginUserKey;
         return $this;
     }
 
-    public function setLoginUserId($loginUserId) {
+    public function setLoginUserId($loginUserId)
+    {
         $this->loginUserId = $loginUserId;
         return $this;
     }
 
-    public function setProperties($properties) {
+    public function setProperties($properties)
+    {
         $this->properties = $properties;
+        return $this;
+    }
+
+    public function setEventTime($eventTime)
+    {
+        $this->eventTime = $eventTime;
         return $this;
     }
 
@@ -358,6 +397,10 @@ class UserAttributesFactory
             $userProps->userProperties($this->properties);
         }
 
+        if (!empty($this->eventTime)) {
+            $userProps->eventTime($this->eventTime);
+        }
+
         return $userProps;
     }
 }
@@ -371,6 +414,7 @@ class UserProps implements \JsonSerializable
     private $eventType;
     private $dataSourceId;
     private $timestamp;
+    private $sendTime;
 
     public function __construct()
     {
@@ -386,6 +430,7 @@ class UserProps implements \JsonSerializable
     public function eventTime($time)
     {
         $this->timestamp = $time;
+        $this->sendTime = $time;
     }
 
     public function loginUserKey($loginUserKey)
