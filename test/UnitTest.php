@@ -52,11 +52,14 @@ class UnitTest extends TestCase
                     'userKey' => 'userKey',
                     'userId' => 'userId',
                     'eventType' => 'CUSTOM',
-                    'dataSourceId' => '12345678'],
+                    'dataSourceId' => '12345678',
+                    'timestamp' => '1648524854000',
+                    'sendTime' => '1648524854000'],
                 $data
             );
         });
         self::$gio->trackCustomEvent(self::$gio->getCustomEventFactory('userId', "eventKey")
+                                                ->setEventTime(1648524854000)
                                                 ->setLoginUserKey('userKey')
                                                 ->create());
     }
@@ -123,11 +126,14 @@ class UnitTest extends TestCase
                 ['userId' => 'userId',
                     'eventType' => 'LOGIN_USER_ATTRIBUTES',
                     'dataSourceId' => '12345678',
+                    'timestamp' => '1648524854000',
+                    'sendTime' => '1648524854000',
                     'attributes' => array('userKey1' => 'v1', 'userKey2' => 'v2')],
                 $data
             );
         });
         self::$gio->setUserAttributesEvent(self::$gio->getUserAttributesFactory('userId')
+                                                    ->setEventTime(1648524854000)
                                                     ->setLoginUserKey('userKey')
                                                     ->setProperties(array('userKey1' => 'v1', 'userKey2' => 'v2'))
                                                     ->create());

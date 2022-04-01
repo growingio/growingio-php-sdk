@@ -51,6 +51,7 @@ $gio = GrowingIO::getInstance($accountID, $host, $dataSourceId, $props);
 ###### 请求参数
 |参数|必选|类型|默认值|说明|
 |:----|:----|:----|:----|-----|
+|evnetTime|false|int|当前时间的时间戳|事件发生时间。如需要开启"自定义event_time上报"的功能开关，请联系技术支持|
 |loginUserKey|false|string| |登录用户类型|
 |loginUserId|true|string| |登录用户id|
 |eventKey|true|string| |事件名, 事件标识符|
@@ -58,6 +59,7 @@ $gio = GrowingIO::getInstance($accountID, $host, $dataSourceId, $props);
 ###### 示例
 ```php
 $gio->trackCustomEvent($gio->getCustomEventFactory('loginUserId', 'eventName')
+    ->setEventTime(1648524854000)
     ->setLoginUserKey('loginUserKey')
     ->setProperties(array('attrKey1' => 'attrValue1', 'attrKey2' => 'attrValue2'))
     ->create()
