@@ -692,6 +692,6 @@ class GrowingIOHelper
 {
     public static function isEmpty($value)
     {
-        return $value === null || trim($value) === '';
+        return $value === null || $value === '';
     }
 }
