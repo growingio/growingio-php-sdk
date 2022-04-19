@@ -26,7 +26,7 @@
   "scripts": {
     "check": "./vendor/bin/phpcs",
     "autofix": "./vendor/bin/phpcbf",
-    "test": "./vendor/bin/phpunit --no-coverage",
+    "test": "./vendor/bin/phpunit --no-coverage --testdox --colors --verbose",
     "coverage": "./vendor/bin/phpunit"
   },
   "minimum-stability": "stable"

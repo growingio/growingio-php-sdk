@@ -41,6 +41,7 @@ class UnitTest extends TestCase
                     'dataSourceId' => '12345678'],
                     $data
                 );
+                return $msg;
             }
         );
         self::$gio->track('userId', 'eventKey');
@@ -61,6 +62,7 @@ class UnitTest extends TestCase
                     'sendTime' => '1648524854000'],
                     $data
                 );
+                return $msg;
             }
         );
         self::$gio->trackCustomEvent(
@@ -84,6 +86,7 @@ class UnitTest extends TestCase
                     'attributes' => array('userKey1' => 'v1', 'userKey2' => 'v2')],
                     $data
                 );
+                return $msg;
             }
         );
         self::$gio->track('userId', 'eventKey', array('userKey1' => 'v1', 'userKey2' => 'v2'));
@@ -103,6 +106,7 @@ class UnitTest extends TestCase
                     'resourceItem' => array('id' => 'itemId', 'key' => 'itemKey')],
                     $data
                 );
+                return $msg;
             }
         );
         self::$gio->track(
@@ -126,6 +130,7 @@ class UnitTest extends TestCase
                     'attributes' => array('userKey1' => 'v1', 'userKey2' => 'v2')],
                     $data
                 );
+                return $msg;
             }
         );
         self::$gio->setUserAttributes('userId', array('userKey1' => 'v1', 'userKey2' => 'v2'));
@@ -145,6 +150,7 @@ class UnitTest extends TestCase
                     'attributes' => array('userKey1' => 'v1', 'userKey2' => 'v2')],
                     $data
                 );
+                return $msg;
             }
         );
         self::$gio->setUserAttributesEvent(
@@ -169,6 +175,7 @@ class UnitTest extends TestCase
                     'attributes' => array('userKey1' => 'v1', 'userKey2' => 'v2', 'price' => 0)],
                     $data
                 );
+                return $msg;
             }
         );
         self::$gio->setItemAttributes('itemId', 'itemKey', array('userKey1' => 'v1', 'userKey2' => 'v2', 'price' => 0));
@@ -192,6 +199,7 @@ class UnitTest extends TestCase
                     )],
                     $data
                 );
+                return $msg;
             }
         );
         self::$gio->trackCustomEvent(
@@ -230,6 +238,7 @@ class UnitTest extends TestCase
                     )],
                     $data
                 );
+                return $msg;
             }
         );
         self::$gio->setUserAttributesEvent(
@@ -248,5 +257,51 @@ class UnitTest extends TestCase
                 )
                 ->create()
         );
+    }
+
+    public function testEmptyString()
+    {
+        $this->setOutputCallback(
+            function ($msg) {
+                $data = json_decode($msg, true);
+                $this->assertArraySubset(
+                    ['eventName' => 'eventKey',
+                        'userId' => '0'],
+                    $data
+                );
+                return $msg;
+            }
+        );
+        self::$gio->track('0', 'eventKey');
+    }
+
+    public function testcheckCustomEvent()
+    {
+        $customEvent = self::$gio->getCustomEventFactory('user_id', 'event_name')
+            ->create();
+        $this->assertFalse($customEvent->isIllegal());
+
+        $customEvent = self::$gio->getCustomEventFactory(null, 'event_name')
+            ->create();
+        $this->assertTrue($customEvent->isIllegal());
+
+        $customEvent = self::$gio->getCustomEventFactory('user_id', null)
+            ->create();
+        $this->assertTrue($customEvent->isIllegal());
+
+        $customEvent = self::$gio->getCustomEventFactory(null, null)
+            ->create();
+        $this->assertTrue($customEvent->isIllegal());
+    }
+
+    public function testCheckUserEvent()
+    {
+        $userProps = self::$gio->getUserAttributesFactory('userId')
+            ->create();
+        $this->assertFalse($userProps->isIllegal());
+
+        $userProps = self::$gio->getUserAttributesFactory(null)
+            ->create();
+        $this->assertTrue($userProps->isIllegal());
     }
 }

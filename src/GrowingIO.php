@@ -28,14 +28,44 @@ trait TimeStampTrait
     }
 }
 
+class Configuration
+{
+    private $debug = false;
+
+    private static $instance = null;
+
+    private function __construct()
+    {
+
+    }
+
+    public static function getInstance()
+    {
+        if (is_null(self::$instance)) {
+            self::$instance = new Configuration();
+        }
+        return self::$instance;
+    }
+
+    public function setDebug($debug)
+    {
+        $this->debug = $debug;
+    }
+
+    public function isDebug()
+    {
+        return $this->debug;
+    }
+}
+
 // @codingStandardsIgnoreLine
 class GrowingIO
 {
-    private $accountID;
-    private $host;
-    private $dataSourceId;
-    private $options;
-    private $consumer;
+    private $accountID = null;
+    private $host = null;
+    private $dataSourceId = null;
+    private $options = null;
+    private $consumer = null;
 
     private static $instance = null;
 
@@ -44,8 +74,8 @@ class GrowingIO
         if (is_null($accountID)) {
             throw new Exception('accountID is null');
         }
-        if (strlen($accountID) <> 16 && strlen($accountID) <> 32) {
-            printf('WARNING: AccountId length error\n');
+        if (strlen($accountID) <> 16 && strlen($accountID) <> 32 && Configuration::getInstance()->isDebug()) {
+            printf('WARNING: AccountId length error' . PHP_EOL);
         }
     }
 
@@ -62,9 +92,8 @@ class GrowingIO
      *                             模式，此模式仅打印日志，不发送数据
      * @throws Exception 初始化参数不合法
      */
-    private function __construct($accountID, $host, $dataSourceId, $options = array())
+    private function __construct($accountID, $host, $dataSourceId, array $options = array())
     {
-        $this->validateAccountID($accountID);
         $this->accountID = $accountID;
         $this->host = $host;
         $this->dataSourceId = $dataSourceId;
@@ -73,10 +102,13 @@ class GrowingIO
             array('accountId' => $accountID, 'host' => $host, 'dataSourceId' => $dataSourceId)
         );
         if (isset($options['debug']) && $options['debug'] === true) {
+            Configuration::getInstance()->setDebug(true);
             $this->consumer = new DebugConsumer($this->options);
         } else {
+            Configuration::getInstance()->setDebug(false);
             $this->consumer = new SimpleConsumer($this->options);
         }
+        $this->validateAccountID($accountID);
     }
 
     /**
@@ -91,9 +123,9 @@ class GrowingIO
      * @return GrowingIO
      * @throws Exception 初始化参数不合法
      */
-    public static function getInstance($accountID, $host, $dataSourceId, $options = array())
+    public static function getInstance($accountID, $host, $dataSourceId, array $options = array())
     {
-        if (empty(self::$instance)) {
+        if (is_null(self::$instance)) {
             self::$instance = new GrowingIO($accountID, $host, $dataSourceId, $options);
         }
         return self::$instance;
@@ -109,7 +141,7 @@ class GrowingIO
      * @param  $key         物品模型key
      * @return void
      */
-    public function track($loginUserId, $eventKey, $properties = array(), $id = null, $key = null)
+    public function track($loginUserId, $eventKey, array $properties = array(), $id = null, $key = null)
     {
         $event = new CustomEvent();
         $event->dataSourceId($this->dataSourceId);
@@ -121,11 +153,12 @@ class GrowingIO
             $event->eventProperties($properties);
         }
 
-        if (!empty($id) && !empty($key)) {
+        if (!GrowingIOHelper::isEmpty($id) && !GrowingIOHelper::isEmpty($key)) {
             $event->resourceItem(array('id' => $id, 'key' => $key));
         }
-
-        $this->consumer->consume($event);
+        if (!$event->isIllegal()) {
+            $this->consumer->consume($event);
+        }
     }
 
     public function getCustomEventFactory($loginUserId, $eventKey)
@@ -138,19 +171,21 @@ class GrowingIO
 
     public function trackCustomEvent(CustomEvent $customEvent)
     {
-        if (!is_null($customEvent)) {
+        if (!is_null($customEvent) && !$customEvent->isIllegal()) {
             $this->consumer->consume($customEvent);
         }
     }
 
-    public function setUserAttributes($logUserId, $properties)
+    public function setUserAttributes($logUserId, array $properties = array())
     {
         $user = new UserProps();
         $user->dataSourceId($this->dataSourceId);
         $user->eventTime($this->currentMillisecond());
         $user->loginUserId($logUserId);
         $user->userProperties($properties);
-        $this->consumer->consume($user);
+        if (!$user->isIllegal()) {
+            $this->consumer->consume($user);
+        }
     }
 
     public function getUserAttributesFactory($loginUserId)
@@ -163,7 +198,7 @@ class GrowingIO
 
     public function setUserAttributesEvent(UserProps $userAttributesEvent)
     {
-        if (!is_null($userAttributesEvent)) {
+        if (!is_null($userAttributesEvent) && !$userAttributesEvent->isIllegal()) {
             $this->consumer->consume($userAttributesEvent);
         }
     }
@@ -173,7 +208,7 @@ class GrowingIO
         return (isset($this->options['idMappingEnabled']) && $this->options['idMappingEnabled'] === true);
     }
 
-    public function setItemAttributes($itemId, $itemKey, $properties = array())
+    public function setItemAttributes($itemId, $itemKey, array $properties = array())
     {
         $item = new ItemProps();
         $item->dataSourceId($this->dataSourceId);
@@ -183,22 +218,24 @@ class GrowingIO
             $item->itemProps($properties);
         }
         $item->projectKey($this->accountID);
-        $this->consumer->consume($item);
+        if (!$item->isIllegal()) {
+            $this->consumer->consume($item);
+        }
     }
 }
 
 // @codingStandardsIgnoreLine
 class CustomEventFactory
 {
-    private $dataSourceId;
-    private $eventKey;
-    private $loginUserKey;
-    private $loginUserId;
-    private $properties;
-    private $id;
-    private $key;
-    private $idMappingEnabled;
-    private $eventTime;
+    private $dataSourceId = null;
+    private $eventKey = null;
+    private $loginUserKey = null;
+    private $loginUserId = null;
+    private $properties = null;
+    private $id = null;
+    private $key = null;
+    private $idMappingEnabled = null;
+    private $eventTime = null;
 
     public function __construct($dataSourceId, $loginUserId, $eventKey, $idMappingEnabled)
     {
@@ -225,7 +262,7 @@ class CustomEventFactory
         return $this;
     }
 
-    public function setProperties($properties)
+    public function setProperties(array $properties)
     {
         $this->properties = $properties;
         return $this;
@@ -253,15 +290,19 @@ class CustomEventFactory
     {
         $customEvent = new CustomEvent();
 
-        if (!empty($this->loginUserId) && !empty($this->eventKey) && !empty($this->dataSourceId)) {
-            $customEvent->loginUserId($this->loginUserId);
-            $customEvent->eventKey($this->eventKey);
+        if (!GrowingIOHelper::isEmpty($this->dataSourceId)) {
             $customEvent->dataSourceId($this->dataSourceId);
-        } else {
-            return null;
         }
 
-        if (!empty($this->loginUserKey) && $this->idMappingEnabled) {
+        if (!GrowingIOHelper::isEmpty($this->eventKey)) {
+            $customEvent->eventKey($this->eventKey);
+        }
+
+        if (!GrowingIOHelper::isEmpty($this->loginUserId)) {
+            $customEvent->loginUserId($this->loginUserId);
+        }
+
+        if (!GrowingIOHelper::isEmpty($this->loginUserKey) && $this->idMappingEnabled) {
             $customEvent->loginUserKey($this->loginUserKey);
         }
 
@@ -269,7 +310,7 @@ class CustomEventFactory
             $customEvent->eventProperties($this->properties);
         }
 
-        if (!empty($this->id) && !empty($this->key)) {
+        if (!GrowingIOHelper::isEmpty($this->id) && !GrowingIOHelper::isEmpty($this->key)) {
             $customEvent->resourceItem(array('id' => $this->id, 'key' => $this->key));
         }
 
@@ -283,15 +324,15 @@ class CustomEventFactory
 // @codingStandardsIgnoreLine
 class CustomEvent implements \JsonSerializable
 {
-    private $timestamp;
-    private $eventName;
-    private $userKey;
-    private $userId;
-    private $attributes;
-    private $eventType;
-    private $dataSourceId;
-    private $resourceItem;
-    private $sendTime;
+    private $timestamp = null;
+    private $eventName = null;
+    private $userKey = null;
+    private $userId = null;
+    private $attributes = null;
+    private $eventType = null;
+    private $dataSourceId = null;
+    private $resourceItem = null;
+    private $sendTime = null;
 
     public function __construct()
     {
@@ -341,18 +382,29 @@ class CustomEvent implements \JsonSerializable
         $this->resourceItem = $resourceItem;
     }
 
+    public function isIllegal()
+    {
+        if (GrowingIOHelper::isEmpty($this->userId) || GrowingIOHelper::isEmpty($this->eventName)) {
+            if (Configuration::getInstance()->isDebug()) {
+                printf('WARNING: userId or eventName is empty' . PHP_EOL);
+            }
+            return true;
+        }
+        return false;
+    }
+
     use JsonSerializableTrait;
 }
 
 // @codingStandardsIgnoreLine
 class UserAttributesFactory
 {
-    private $dataSourceId;
-    private $properties;
-    private $loginUserKey;
-    private $loginUserId;
-    private $idMappingEnabled;
-    private $eventTime;
+    private $dataSourceId = null;
+    private $properties = null;
+    private $loginUserKey = null;
+    private $loginUserId = null;
+    private $idMappingEnabled = null;
+    private $eventTime = null;
 
     public function __construct($dataSourceId, $loginUserId, $idMappingEnabled)
     {
@@ -373,7 +425,7 @@ class UserAttributesFactory
         return $this;
     }
 
-    public function setProperties($properties)
+    public function setProperties(array $properties)
     {
         $this->properties = $properties;
         return $this;
@@ -388,14 +440,16 @@ class UserAttributesFactory
     public function create()
     {
         $userProps = new UserProps();
-        if (!empty($this->dataSourceId) && !empty($this->loginUserId)) {
+
+        if (!GrowingIOHelper::isEmpty($this->dataSourceId)) {
             $userProps->dataSourceId($this->dataSourceId);
-            $userProps->loginUserId($this->loginUserId);
-        } else {
-            return null;
         }
 
-        if (!empty($this->loginUserKey) && $this->idMappingEnabled) {
+        if (!GrowingIOHelper::isEmpty($this->loginUserId)) {
+            $userProps->loginUserId($this->loginUserId);
+        }
+
+        if (!GrowingIOHelper::isEmpty($this->loginUserKey) && $this->idMappingEnabled) {
             $userProps->loginUserKey($this->loginUserKey);
         }
 
@@ -414,13 +468,13 @@ class UserAttributesFactory
 // @codingStandardsIgnoreLine
 class UserProps implements \JsonSerializable
 {
-    private $userKey;
-    private $userId;
-    private $attributes;
-    private $eventType;
-    private $dataSourceId;
-    private $timestamp;
-    private $sendTime;
+    private $userKey = null;
+    private $userId = null;
+    private $attributes = null;
+    private $eventType = null;
+    private $dataSourceId = null;
+    private $timestamp = null;
+    private $sendTime = null;
 
     public function __construct()
     {
@@ -460,17 +514,28 @@ class UserProps implements \JsonSerializable
         }
     }
 
+    public function isIllegal()
+    {
+        if (GrowingIOHelper::isEmpty($this->userId)) {
+            if (Configuration::getInstance()->isDebug()) {
+                printf('WARNING: userId is empty' . PHP_EOL);
+            }
+            return true;
+        }
+        return false;
+    }
+
     use JsonSerializableTrait;
 }
 
 // @codingStandardsIgnoreLine
 class ItemProps implements \JsonSerializable
 {
-    private $id;
-    private $key;
-    private $dataSourceId;
-    private $projectKey;
-    private $attributes;
+    private $id = null;
+    private $key = null;
+    private $dataSourceId = null;
+    private $projectKey = null;
+    private $attributes = null;
 
     public function __construct()
     {
@@ -501,16 +566,27 @@ class ItemProps implements \JsonSerializable
         $this->projectKey = $projectKey;
     }
 
+    public function isIllegal()
+    {
+        if (GrowingIOHelper::isEmpty($this->id) || GrowingIOHelper::isEmpty($this->key)) {
+            if (Configuration::getInstance()->isDebug()) {
+                printf('WARNING: id or key is empty' . PHP_EOL);
+            }
+            return true;
+        }
+        return false;
+    }
+
     use JsonSerializableTrait;
 }
 
 // @codingStandardsIgnoreLine
 class JSonUploader
 {
-    private $accountId;
-    private $host;
-    private $port;
-    private $channels;
+    private $accountId = null;
+    private $host = null;
+    private $port = null;
+    private $channels = null;
 
     public function __construct($options)
     {
@@ -557,7 +633,9 @@ class JSonUploader
             $curl_error = curl_error($curl);
             $curl_errno = curl_errno($curl);
             curl_close($curl);
-            printf("errno:[$curl_errno] error:[$curl_error]\n");
+            if (Configuration::getInstance()->isDebug()) {
+                printf("errno:[$curl_errno] error:[$curl_error]" . PHP_EOL);
+            }
             return false;
         } else {
             curl_close($curl);
@@ -574,7 +652,7 @@ abstract class Consumer
 // @codingStandardsIgnoreLine
 class SimpleConsumer extends Consumer
 {
-    private $uploader;
+    private $uploader = null;
 
     public function __construct($options)
     {
@@ -605,6 +683,15 @@ class DebugConsumer extends Consumer
 
     public function consume($event)
     {
-        printf(json_encode($event) . "\n");
+        printf(json_encode($event) . PHP_EOL);
+    }
+}
+
+// @codingStandardsIgnoreLine
+class GrowingIOHelper
+{
+    public static function isEmpty($value)
+    {
+        return $value === null || trim($value) === '';
     }
 }
