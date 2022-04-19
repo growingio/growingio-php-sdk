@@ -59,14 +59,18 @@ class UnitTest extends TestCase
                     'eventType' => 'CUSTOM',
                     'dataSourceId' => '12345678',
                     'timestamp' => '1648524854000',
-                    'sendTime' => '1648524854000'],
+                    'sendTime' => '1648524854000',
+                    'deviceId' => 'anonymousId'],
                     $data
                 );
                 return $msg;
             }
         );
         self::$gio->trackCustomEvent(
-            self::$gio->getCustomEventFactory('userId', "eventKey")
+            self::$gio->getCustomEventFactory()
+                ->setEventKey('eventKey')
+                ->setAnonymousId('anonymousId')
+                ->setLoginUserId('userId')
                 ->setEventTime(1648524854000)
                 ->setLoginUserKey('userKey')
                 ->create()
@@ -147,6 +151,7 @@ class UnitTest extends TestCase
                     'dataSourceId' => '12345678',
                     'timestamp' => '1648524854000',
                     'sendTime' => '1648524854000',
+                    'deviceId' => 'anonymousId',
                     'attributes' => array('userKey1' => 'v1', 'userKey2' => 'v2')],
                     $data
                 );
@@ -154,9 +159,11 @@ class UnitTest extends TestCase
             }
         );
         self::$gio->setUserAttributesEvent(
-            self::$gio->getUserAttributesFactory('userId')
+            self::$gio->getUserAttributesFactory()
                 ->setEventTime(1648524854000)
                 ->setLoginUserKey('userKey')
+                ->setAnonymousId('anonymousId')
+                ->setLoginUserId('userId')
                 ->setProperties(array('userKey1' => 'v1', 'userKey2' => 'v2'))
                 ->create()
         );
@@ -277,30 +284,60 @@ class UnitTest extends TestCase
 
     public function testcheckCustomEvent()
     {
-        $customEvent = self::$gio->getCustomEventFactory('user_id', 'event_name')
+        $customEvent = self::$gio->getCustomEventFactory()
+            ->setEventKey('event_name')
+            ->setLoginUserId('user_id')
             ->create();
         $this->assertFalse($customEvent->isIllegal());
 
-        $customEvent = self::$gio->getCustomEventFactory(null, 'event_name')
+        $customEvent = self::$gio->getCustomEventFactory()
+            ->setEventKey('event_name')
+            ->setAnonymousId('anonymous_id')
+            ->create();
+        $this->assertFalse($customEvent->isIllegal());
+
+        $customEvent = self::$gio->getCustomEventFactory()
+            ->setEventKey('event_name')
             ->create();
         $this->assertTrue($customEvent->isIllegal());
 
-        $customEvent = self::$gio->getCustomEventFactory('user_id', null)
+        $customEvent = self::$gio->getCustomEventFactory()
+            ->setLoginUserId('user_id')
             ->create();
         $this->assertTrue($customEvent->isIllegal());
 
-        $customEvent = self::$gio->getCustomEventFactory(null, null)
+        $customEvent = self::$gio->getCustomEventFactory()
+            ->setAnonymousId('anonymous_id')
             ->create();
         $this->assertTrue($customEvent->isIllegal());
     }
 
     public function testCheckUserEvent()
     {
-        $userProps = self::$gio->getUserAttributesFactory('userId')
+        $userProps = self::$gio->getUserAttributesFactory()
+            ->setProperties(array("attr_key" => 'attr_value'))
+            ->setLoginUserId("user_id")
             ->create();
         $this->assertFalse($userProps->isIllegal());
 
-        $userProps = self::$gio->getUserAttributesFactory(null)
+        $userProps = self::$gio->getUserAttributesFactory()
+            ->setProperties(array("attr_key" => 'attr_value'))
+            ->setAnonymousId("anonymous_id")
+            ->create();
+        $this->assertFalse($userProps->isIllegal());
+
+        $userProps = self::$gio->getUserAttributesFactory()
+            ->setAnonymousId("anonymous_id")
+            ->create();
+        $this->assertTrue($userProps->isIllegal());
+
+        $userProps = self::$gio->getUserAttributesFactory()
+            ->setLoginUserId("user_id")
+            ->create();
+        $this->assertTrue($userProps->isIllegal());
+
+        $userProps = self::$gio->getUserAttributesFactory()
+            ->setProperties(array("attr_key" => 'attr_value'))
             ->create();
         $this->assertTrue($userProps->isIllegal());
     }
