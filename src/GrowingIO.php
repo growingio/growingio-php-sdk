@@ -327,7 +327,13 @@ class CustomEvent implements \JsonSerializable
 
     public function eventProperties($properties)
     {
-        $this->attributes = $properties;
+        foreach ($properties as $key => $value) {
+            if (is_array($value) && !empty($value)) {
+                $this->attributes[$key] = implode('||', $value);
+            } else if (!is_array($value)) {
+                $this->attributes[$key] = $value;
+            }
+        }
     }
 
     public function resourceItem($resourceItem)
@@ -445,7 +451,13 @@ class UserProps implements \JsonSerializable
 
     public function userProperties($properties)
     {
-        $this->attributes = $properties;
+        foreach ($properties as $key => $value) {
+            if (is_array($value) && !empty($value)) {
+                $this->attributes[$key] = implode('||', $value);
+            } else if (!is_array($value)) {
+                $this->attributes[$key] = $value;
+            }
+        }
     }
 
     use JsonSerializableTrait;
