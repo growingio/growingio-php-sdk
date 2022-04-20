@@ -161,7 +161,7 @@ class GrowingIO
         }
     }
 
-    public function getCustomEventFactory($loginUserId, $eventKey)
+    public function getCustomEventFactory($loginUserId = null, $eventKey = null)
     {
         return new CustomEventFactory(
             $this->dataSourceId, $loginUserId, $eventKey,
@@ -188,7 +188,7 @@ class GrowingIO
         }
     }
 
-    public function getUserAttributesFactory($loginUserId)
+    public function getUserAttributesFactory($loginUserId = null)
     {
         return new UserAttributesFactory(
             $this->dataSourceId, $loginUserId,
@@ -236,6 +236,7 @@ class CustomEventFactory
     private $key = null;
     private $idMappingEnabled = null;
     private $eventTime = null;
+    private $anonymousId = null;
 
     public function __construct($dataSourceId, $loginUserId, $eventKey, $idMappingEnabled)
     {
@@ -248,6 +249,7 @@ class CustomEventFactory
     public function setEventKey($eventKey)
     {
         $this->eventKey = $eventKey;
+        return $this;
     }
 
     public function setLoginUserKey($loginUserKey)
@@ -259,6 +261,11 @@ class CustomEventFactory
     public function setLoginUserId($loginUserId)
     {
         $this->loginUserId = $loginUserId;
+        return $this;
+    }
+
+    public function setAnonymousId($anonymousId) {
+        $this->anonymousId = $anonymousId;
         return $this;
     }
 
@@ -306,6 +313,10 @@ class CustomEventFactory
             $customEvent->loginUserKey($this->loginUserKey);
         }
 
+        if (!GrowingIOHelper::isEmpty($this->anonymousId)) {
+            $customEvent->deviceId($this->anonymousId);
+        }
+
         if (!empty($this->properties)) {
             $customEvent->eventProperties($this->properties);
         }
@@ -333,6 +344,7 @@ class CustomEvent implements \JsonSerializable
     private $dataSourceId = null;
     private $resourceItem = null;
     private $sendTime = null;
+    private $deviceId = null;
 
     public function __construct()
     {
@@ -366,6 +378,10 @@ class CustomEvent implements \JsonSerializable
         $this->userId = $loginUserId;
     }
 
+    public function deviceId($anonymousId) {
+        $this->deviceId = $anonymousId;
+    }
+
     public function eventProperties($properties)
     {
         foreach ($properties as $key => $value) {
@@ -384,12 +400,20 @@ class CustomEvent implements \JsonSerializable
 
     public function isIllegal()
     {
-        if (GrowingIOHelper::isEmpty($this->userId) || GrowingIOHelper::isEmpty($this->eventName)) {
+        if (GrowingIOHelper::isEmpty($this->eventName)) {
             if (Configuration::getInstance()->isDebug()) {
-                printf('WARNING: userId or eventName is empty' . PHP_EOL);
+                printf('WARNING: CustomEvent(eventName is empty)' . PHP_EOL);
             }
             return true;
         }
+
+        if (GrowingIOHelper::isEmpty($this->userId) && GrowingIOHelper::isEmpty($this->deviceId)) {
+            if (Configuration::getInstance()->isDebug()) {
+                printf('WARNING: CustomEvent(userId and anonymousId are empty)' . PHP_EOL);
+            }
+            return true;
+        }
+
         return false;
     }
 
@@ -405,6 +429,7 @@ class UserAttributesFactory
     private $loginUserId = null;
     private $idMappingEnabled = null;
     private $eventTime = null;
+    private $anonymousId = null;
 
     public function __construct($dataSourceId, $loginUserId, $idMappingEnabled)
     {
@@ -422,6 +447,11 @@ class UserAttributesFactory
     public function setLoginUserId($loginUserId)
     {
         $this->loginUserId = $loginUserId;
+        return $this;
+    }
+
+    public function setAnonymousId($anonymousId) {
+        $this->anonymousId = $anonymousId;
         return $this;
     }
 
@@ -453,6 +483,10 @@ class UserAttributesFactory
             $userProps->loginUserKey($this->loginUserKey);
         }
 
+        if (!GrowingIOHelper::isEmpty($this->anonymousId)) {
+            $userProps->deviceId($this->anonymousId);
+        }
+
         if (!empty($this->properties)) {
             $userProps->userProperties($this->properties);
         }
@@ -475,6 +509,7 @@ class UserProps implements \JsonSerializable
     private $dataSourceId = null;
     private $timestamp = null;
     private $sendTime = null;
+    private $deviceId = null;
 
     public function __construct()
     {
@@ -503,6 +538,10 @@ class UserProps implements \JsonSerializable
         $this->userId = $loginUserId;
     }
 
+    public function deviceId($anonymousId) {
+        $this->deviceId = $anonymousId;
+    }
+
     public function userProperties($properties)
     {
         foreach ($properties as $key => $value) {
@@ -516,12 +555,20 @@ class UserProps implements \JsonSerializable
 
     public function isIllegal()
     {
-        if (GrowingIOHelper::isEmpty($this->userId)) {
+        if (empty($this->attributes)) {
             if (Configuration::getInstance()->isDebug()) {
-                printf('WARNING: userId is empty' . PHP_EOL);
+                printf('WARNING: UserProps(attributes is empty)' . PHP_EOL);
             }
             return true;
         }
+
+        if (GrowingIOHelper::isEmpty($this->deviceId) && GrowingIOHelper::isEmpty($this->userId)) {
+            if (Configuration::getInstance()->isDebug()) {
+                printf('WARNING: UserProps(userId and anonymousId are empty)' . PHP_EOL);
+            }
+            return true;
+        }
+
         return false;
     }
 
@@ -570,7 +617,7 @@ class ItemProps implements \JsonSerializable
     {
         if (GrowingIOHelper::isEmpty($this->id) || GrowingIOHelper::isEmpty($this->key)) {
             if (Configuration::getInstance()->isDebug()) {
-                printf('WARNING: id or key is empty' . PHP_EOL);
+                printf('WARNING: ItemProps(id or key is empty)' . PHP_EOL);
             }
             return true;
         }
