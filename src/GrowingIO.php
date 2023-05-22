@@ -5,6 +5,7 @@ namespace com\growingio;
 // @codingStandardsIgnoreLine
 trait JsonSerializableTrait
 {
+    #[\ReturnTypeWillChange]
     public function jsonSerialize()
     {
         $data = [];
