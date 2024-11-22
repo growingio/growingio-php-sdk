@@ -635,11 +635,15 @@ class JSonUploader
     private $host = null;
     private $port = null;
     private $channels = null;
+    private $timeout = 600;
 
     public function __construct($options)
     {
         $this->accountId = $options['accountId'];
         $this->host = $options['host'];
+        if (isset($options['timeout']) && is_int($options['timeout'])) {
+            $this->timeout = $options['timeout'];
+        }
         if (substr($this->host, 0, 5) === 'https') {
             $this->port = 443;
         } else {
@@ -666,7 +670,7 @@ class JSonUploader
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 30,
+            CURLOPT_TIMEOUT_MS => $this->timeout,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS => $data,

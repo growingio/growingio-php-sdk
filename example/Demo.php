@@ -9,9 +9,9 @@ require '../vendor/autoload.php';
 // 所有自定义事件的属性也需要提前在GrowingIO产品中进行定义
 
 $accountID = '1234567887654321'; // 项目 ID，见数据源配置
-$host = 'https://localhost.com'; // 数据收集服务域名，请参考运维手册或联系技术支持获取
+$host = 'http://127.0.0.1'; // 数据收集服务域名，请参考运维手册或联系技术支持获取
 $dataSourceId = '12345678'; // 数据源 ID，见数据源配置
-$props = array('debug' => true, 'idMappingEnabled' => true); // debug 模式，此模式仅打印日志，不发送数据
+$props = array('debug' => false, 'idMappingEnabled' => true, 'timeout' => 500); // debug 模式，此模式仅打印日志，不发送数据
 
 $gio = GrowingIO::getInstance($accountID, $host, $dataSourceId, $props);
 
